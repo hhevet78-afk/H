@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZahirTV</title>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            onAuthStateChanged, 
+            signOut 
+        } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js';
+        import { 
+            getFirestore, 
+            doc, 
+            getDoc, 
+            setDoc, 
+            updateDoc, 
+            onSnapshot 
+        } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBNyGjB4y0Vpc0_877PHf1wE75qYjbeIuc",
+            authDomain: "zahir-6517d.firebaseapp.com",
+            projectId: "zahir-6517d",
+            storageBucket: "zahir-6517d.firebasestorage.app",
+            messagingSenderId: "819292948127",
+            appId: "1:819292948127:web:bd9320d7df43ba074e84aa",
+            measurementId: "G-GMFV1TVCM9"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Global değişkenler
+        window.firebaseAuth = auth;
+        window.firebaseDb = db;
+        window.firebaseCreateUser = createUserWithEmailAndPassword;
+        window.firebaseSignIn = signInWithEmailAndPassword;
+        window.firebaseSignOut = signOut;
+        window.firebaseOnAuthStateChanged = onAuthStateChanged;
+        window.firebaseGetDoc = getDoc;
+        window.firebaseSetDoc = setDoc;
+        window.firebaseUpdateDoc = updateDoc;
+        window.firebaseDoc = doc;
+        window.firebaseOnSnapshot = onSnapshot;
+    </script>
+
+    <style>
+        :root {
+            --primary: #e50914;
+            --secondary: #141414;
+            --text: #ffffff;
+            --text-secondary: #b3b3b3;
+            --bg: #000000;
+            --card-bg: #2f2f2f;
+            --success: #00ff00;
+            --error: #ff4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 4%;
+            background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            transition: background 0.3s;
+        }
+
+        .header.scrolled {
+            background: var(--secondary);
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .user-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .credit-badge {
+            background: var(--primary);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .profile {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .logout-btn {
+            background: transparent;
+            border: 1px solid var(--text-secondary);
+            color: var(--text);
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: var(--text-secondary);
+        }
+
+        /* Auth Screen */
+        .auth-screen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--bg) 100%);
+            padding: 2rem;
+        }
+
+        .auth-container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 3rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .auth-title {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .auth-subtitle {
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .auth-tab.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            color: var(--text);
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .auth-btn {
+            width: 100%;
+            padding: 0.8rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .auth-btn:hover {
+            background: #f40612;
+        }
+
+        .auth-btn.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .auth-error {
+            color: var(--error);
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        .auth-success {
+            color: var(--success);
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: none;
+            padding-top: 80px;
+            min-height: 100vh;
+        }
+
+        .page {
+            display: none;
+            padding: 2rem 4%;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Movies Grid */
+        .movies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .movie-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+
+        .movie-card:hover {
+            transform: scale(1.05);
+        }
+
+        .movie-poster {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+        }
+
+        .movie-info {
+            padding: 1rem;
+        }
+
+        .movie-title {
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .movie-meta {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .watch-btn {
+            width: 100%;
+            padding: 0.5rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.3s;
+        }
+
+        .watch-btn:hover {
+            background: #f40612;
+        }
+
+        .watch-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        /* Ads Section */
+        .ads-container {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .ads-title {
+            color: #ffd700;
+            margin-bottom: 1rem;
+        }
+
+        .ads-description {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .watch-ad-btn {
+            background: #ffd700;
+            color: #000;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-bottom: 1rem;
+        }
+
+        .watch-ad-btn:hover {
+            background: #ffed4a;
+        }
+
+        .watch-ad-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .ads-remaining {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Profile Section */
+        .profile-container {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .profile-avatar {
+            width: 4rem;
+            height: 4rem;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .profile-info h2 {
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-info p {
+            color: var(--text-secondary);
+        }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--secondary);
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .modal-title {
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .modal-message {
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .modal-close {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: var(--secondary);
+            display: flex;
+            justify-content: space-around;
+            padding: 0.8rem 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.7rem;
+            transition: color 0.3s;
+            cursor: pointer;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .nav-icon {
+            font-size: 1.2rem;
+            margin-bottom: 0.2rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                padding: 1rem;
+            }
+
+            .movies-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 0.8rem;
+            }
+
+            .movie-poster {
+                height: 220px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" id="header">
+        <div class="logo">ZAHIRTV</div>
+        <div class="user-section" id="userSection" style="display: none;">
+            <div class="credit-badge" id="creditBadge">0 KREDİ</div>
+            <button class="logout-btn" onclick="handleLogout()">Çıkış</button>
+            <div class="profile" id="profileBtn" onclick="showPage('profile')">?</div>
+        </div>
+    </header>
+
+    <!-- Authentication Screen -->
+    <section class="auth-screen" id="authScreen">
+        <div class="auth-container">
+            <h1 class="auth-title">ZahirTV</h1>
+            <p class="auth-subtitle">Premium film deneyimine hoş geldin</p>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="showAuthTab('login')">Giriş Yap</button>
+                <button class="auth-tab" onclick="showAuthTab('register')">Kayıt Ol</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label class="form-label">E-posta</label>
+                    <input type="email" class="form-input" id="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Şifre</label>
+                    <input type="password" class="form-input" id="loginPassword" required>
+                </div>
+                <button type="submit" class="auth-btn" id="loginBtn">
+                    Giriş Yap
+                </button>
+                <div class="auth-error" id="loginError"></div>
+            </form>
+
+            <!-- Register Form -->
+            <form id="registerForm" class="auth-form" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label">Ad Soyad</label>
+                    <input type="text" class="form-input" id="registerName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">E-posta</label>
+                    <input type="email" class="form-input" id="registerEmail" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Şifre</label>
+                    <input type="password" class="form-input" id="registerPassword" required minlength="6">
+                </div>
+                <button type="submit" class="auth-btn" id="registerBtn">
+                    Kayıt Ol
+                </button>
+                <div class="auth-error" id="registerError"></div>
+                <div class="auth-success" id="registerSuccess"></div>
+            </form>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <!-- Home Page -->
+        <section class="page active" id="homePage">
+            <div class="page-title">Öne Çıkan Filmler</div>
+            <div class="movies-grid" id="featuredMovies">
+                <!-- Filmler buraya yüklenecek -->
+            </div>
+        </section>
+
+        <!-- Movies Page -->
+        <section class="page" id="moviesPage">
+            <div class="page-title">Tüm Filmler</div>
+            <div class="movies-grid" id="allMovies">
+                <!-- Tüm filmler buraya yüklenecek -->
+            </div>
+        </section>
+
+        <!-- Ads Page -->
+        <section class="page" id="adsPage">
+            <div class="page-title">Kredi Kazan</div>
+            <div class="ads-container">
+                <h3 class="ads-title">Reklam İzle, Kredi Kazan!</h3>
+                <p class="ads-description">
+                    Günde 2 kez reklam izleyerek 20'şer kredi kazanabilirsin. 
+                    Toplamda 40 kredi ile 4 film izleme şansın var!
+                </p>
+                <button class="watch-ad-btn" id="watchAdBtn" onclick="watchAd()">
+                    Reklam İzle (+20 KREDİ)
+                </button>
+                <p class="ads-remaining" id="adsRemaining">
+                    Kalan reklam hakkı: <span id="remainingAds">0</span>
+                </p>
+            </div>
+        </section>
+
+        <!-- Profile Page -->
+        <section class="page" id="profilePage">
+            <div class="page-title">Profilim</div>
+            <div class="profile-container">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profileAvatar">?</div>
+                    <div class="profile-info">
+                        <h2 id="userName">Kullanıcı</h2>
+                        <p id="userEmail">email@example.com</p>
+                    </div>
+                </div>
+                <div class="profile-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalCredits">0</div>
+                        <div class="stat-label">Toplam Kredi</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="moviesWatched">0</div>
+                        <div class="stat-label">İzlenen Film</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="adsWatched">0</div>
+                        <div class="stat-label">Reklam İzlenme</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="memberSince">2024</div>
+                        <div class="stat-label">Üyelik Yılı</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h3 class="modal-title" id="modalTitle">Bilgi</h3>
+            <p class="modal-message" id="modalMessage">Mesaj buraya gelecek</p>
+            <button class="modal-close" onclick="closeModal()">Tamam</button>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav" id="bottomNav" style="display: none;">
+        <div class="nav-item active" onclick="showPage('home')">
+            <span class="nav-icon">🏠</span>
+            Ana Sayfa
+        </div>
+        <div class="nav-item" onclick="showPage('movies')">
+            <span class="nav-icon">🎬</span>
+            Filmler
+        </div>
+        <div class="nav-item" onclick="showPage('ads')">
+            <span class="nav-icon">💰</span>
+            Kredi
+        </div>
+        <div class="nav-item" onclick="showPage('profile')">
+            <span class="nav-icon">👤</span>
+            Profil
+        </div>
+    </nav>
+
+    <script>
+        // Global user data
+        let currentUser = null;
+        let userData = null;
+        let movies = [];
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeAuth();
+            loadMovies();
+            setupHeaderScroll();
+            setupAuthForms();
+        });
+
+        // Auth forms setup
+        function setupAuthForms() {
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('registerForm').addEventListener('submit', handleRegister);
+        }
+
+        // Auth tabs
+        function showAuthTab(tab) {
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'none';
+            
+            if (tab === 'login') {
+                document.querySelector('.auth-tab:nth-child(1)').classList.add('active');
+                document.getElementById('loginForm').style.display = 'block';
+            } else {
+                document.querySelector('.auth-tab:nth-child(2)').classList.add('active');
+                document.getElementById('registerForm').style.display = 'block';
+            }
+        }
+
+        // Auth state listener
+        async function initializeAuth() {
+            window.firebaseOnAuthStateChanged(window.firebaseAuth, async (user) => {
+                if (user) {
+                    currentUser = user;
+                    await loadUserData(user.uid);
+                    showMainApp();
+                } else {
+                    showAuthScreen();
+                }
+            });
+        }
+
+        // Login handler
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const errorDiv = document.getElementById('loginError');
+            
+            try {
+                loginBtn.classList.add('loading');
+                loginBtn.textContent = 'Giriş Yapılıyor...';
+                errorDiv.textContent = '';
+                
+                await window.firebaseSignIn(window.firebaseAuth, email, password);
+                
+            } catch (error) {
+                console.error('Giriş hatası:', error);
+                errorDiv.textContent = getAuthErrorMessage(error.code);
+            } finally {
+                loginBtn.classList.remove('loading');
+                loginBtn.textContent = 'Giriş Yap';
+            }
+        }
+
+        // Register handler
+        async function handleRegister(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const registerBtn = document.getElementById('registerBtn');
+            const errorDiv = document.getElementById('registerError');
+            const successDiv = document.getElementById('registerSuccess');
+            
+            try {
+                registerBtn.classList.add('loading');
+                registerBtn.textContent = 'Kayıt Yapılıyor...';
+                errorDiv.textContent = '';
+                successDiv.textContent = '';
+                
+                const userCredential = await window.firebaseCreateUser(window.firebaseAuth, email, password);
+                
+                // Kullanıcı verisini Firestore'a kaydet
+                const userDocRef = window.firebaseDoc(window.firebaseDb, 'users', userCredential.user.uid);
+                await window.firebaseSetDoc(userDocRef, {
+                    name: name,
+                    email: email,
+                    credits: 100,
+                    adsWatched: 0,
+                    moviesWatched: 0,
+                    adsRemaining: 2,
+                    memberSince: new Date().toISOString(),
+                    lastAdWatch: null
+                });
+                
+                successDiv.textContent = 'Kayıt başarılı! Giriş yapılıyor...';
+                
+            } catch (error) {
+                console.error('Kayıt hatası:', error);
+                errorDiv.textContent = getAuthErrorMessage(error.code);
+            } finally {
+                registerBtn.classList.remove('loading');
+                registerBtn.textContent = 'Kayıt Ol';
+            }
+        }
+
+        // Auth error messages
+        function getAuthErrorMessage(errorCode) {
+            const messages = {
+                'auth/email-already-in-use': 'Bu e-posta adresi zaten kullanılıyor.',
+                'auth/invalid-email': 'Geçersiz e-posta adresi.',
+                'auth/weak-password': 'Şifre en az 6 karakter olmalıdır.',
+                'auth/user-not-found': 'Bu e-posta adresiyle kayıtlı kullanıcı bulunamadı.',
+                'auth/wrong-password': 'Yanlış şifre.',
+                'auth/too-many-requests': 'Çok fazla deneme yaptınız. Lütfen daha sonra tekrar deneyin.'
+            };
+            
+            return messages[errorCode] || 'Bir hata oluştu. Lütfen tekrar deneyin.';
+        }
+
+        // Load user data from Firestore
+        async function loadUserData(uid) {
+            try {
+                const userDocRef = window.firebaseDoc(window.firebaseDb, 'users', uid);
+                const userDoc = await window.firebaseGetDoc(userDocRef);
+                
+                if (userDoc.exists()) {
+                    userData = userDoc.data();
+                } else {
+                    // Yeni kullanıcı için varsayılan veri
+                    userData = {
+                        name: currentUser.displayName || currentUser.email.split('@')[0],
+                        email: currentUser.email,
+                        credits: 100,
+                        adsWatched: 0,
+                        moviesWatched: 0,
+                        adsRemaining: 2,
+                        memberSince: new Date().toISOString(),
+                        lastAdWatch: null
+                    };
+                    await window.firebaseSetDoc(userDocRef, userData);
+                }
+                
+                // Real-time listener
+                window.firebaseOnSnapshot(userDocRef, (doc) => {
+                    if (doc.exists()) {
+                        userData = doc.data();
+                        updateUI();
+                    }
+                });
+                
+                updateUI();
+            } catch (error) {
+                console.error('Kullanıcı verisi yükleme hatası:', error);
+            }
+        }
+
+        // Update UI with user data
+        function updateUI() {
+            if (!userData) return;
+            
+            document.getElementById('creditBadge').textContent = userData.credits + ' KREDİ';
+            document.getElementById('profileAvatar').textContent = userData.name.charAt(0).toUpperCase();
+            document.getElementById('userName').textContent = userData.name;
+            document.getElementById('userEmail').textContent = userData.email;
+            document.getElementById('totalCredits').textContent = userData.credits;
+            document.getElementById('moviesWatched').textContent = userData.moviesWatched;
+            document.getElementById('adsWatched').textContent = userData.adsWatched;
+            document.getElementById('memberSince').textContent = new Date(userData.memberSince).getFullYear();
+            document.getElementById('remainingAds').textContent = userData.adsRemaining;
+            
+            // Reklam butonunu güncelle
+            const watchAdBtn = document.getElementById('watchAdBtn');
+            if (userData.adsRemaining === 0) {
+                watchAdBtn.disabled = true;
+                watchAdBtn.textContent = 'GÜNLÜK LİMİT DOLDU';
+            } else {
+                watchAdBtn.disabled = false;
+                watchAdBtn.textContent = 'Reklam İzle (+20 KREDİ)';
+            }
+            
+            // Film butonlarını güncelle
+            updateMovieButtons();
+        }
+
+        // Show/hide screens
+        function showMainApp() {
+            document.getElementById('authScreen').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+            document.getElementById('userSection').style.display = 'flex';
+            document.getElementById('bottomNav').style.display = 'flex';
+        }
+
+        function showAuthScreen() {
+            document.getElementById('authScreen').style.display = 'flex';
+            document.getElementById('mainContent').style.display = 'none';
+            document.getElementById('userSection').style.display = 'none';
+            document.getElementById('bottomNav').style.display = 'none';
+            
+            // Formları temizle
+            document.getElementById('loginForm').reset();
+            document.getElementById('registerForm').reset();
+            document.getElementById('loginError').textContent = '';
+            document.getElementById('registerError').textContent = '';
+            document.getElementById('registerSuccess').textContent = '';
+        }
+
+        // Logout
+        async function handleLogout() {
+            try {
+                await window.firebaseSignOut(window.firebaseAuth);
+                currentUser = null;
+                userData = null;
+            } catch (error) {
+                console.error('Çıkış hatası:', error);
+            }
+        }
+
+        // Page Navigation
+        function showPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            
+            document.getElementById(page + 'Page').classList.add('active');
+            
+            document.querySelectorAll('.nav-item').forEach((nav, index) => {
+                const pages = ['home', 'movies', 'ads', 'profile'];
+                if (pages[index] === page) {
+                    nav.classList.add('active');
+                }
+            });
+        }
+
+        // Load movies
+        function loadMovies() {
+            movies = [
+                { id: 1, title: "Aksiyon Macerası", year: 2023, duration: "2s 15dk", credits: 10 },
+                { id: 2, title: "Romantik Komedi", year: 2022, duration: "1s 45dk", credits: 10 },
+                { id: 3, title: "Bilim Kurgu", year: 2024, duration: "2s 30dk", credits: 10 },
+                { id: 4, title: "Gerilim Filmi", year: 2023, duration: "1s 55dk", credits: 10 },
+                { id: 5, title: "Dram", year: 2022, duration: "2s 10dk", credits: 10 },
+                { id: 6, title: "Belgesel", year: 2024, duration: "1s 30dk", credits: 10 }
+            ];
+            
+            const featuredGrid = document.getElementById('featuredMovies');
+            const allGrid = document.getElementById('allMovies');
+            
+            featuredGrid.innerHTML = '';
+            allGrid.innerHTML = '';
+            
+            movies.forEach(movie => {
+                const movieCard = createMovieCard(movie);
+                featuredGrid.appendChild(movieCard.cloneNode(true));
+                allGrid.appendChild(movieCard);
+            });
+        }
+
+        function createMovieCard(movie) {
+            const card = document.createElement('div');
+            card.className = 'movie-card';
+            card.innerHTML = `
+                <img src="https://via.placeholder.com/300x400/333/white?text=${encodeURIComponent(movie.title)}" 
+                     alt="${movie.title}" class="movie-poster">
+                <div class="movie-info">
+                    <h3 class="movie-title">${movie.title}</h3>
+                    <div class="movie-meta">
+                        <span>${movie.year}</span>
+                        <span>${movie.duration}</span>
+                    </div>
+                    <button class="watch-btn" onclick="watchMovie(${movie.id})" 
+                            ${!userData || userData.credits < movie.credits ? 'disabled' : ''}>
+                        İZLE (${movie.credits} KREDİ)
+                    </button>
+                </div>
+            `;
+            return card;
+        }
+
+        // Update movie buttons based on credits
+        function updateMovieButtons() {
+            document.querySelectorAll('.watch-btn').forEach(btn => {
+                if (userData && userData.credits >= 10) {
+                    btn.disabled = false;
+                } else {
+                    btn.disabled = true;
+                }
+            });
+        }
+
+        // Watch movie
+        async function watchMovie(movieId) {
+            if (!userData || userData.credits < 10) {
+                showModal('Yetersiz Kredi', 'Film izlemek için yeterli kredin yok. Reklam izleyerek kredi kazanabilirsin.');
+                return;
+            }
+
+            try {
+                const userDocRef = window.firebaseDoc(window.firebaseDb, 'users', currentUser.uid);
+                await window.firebaseUpdateDoc(userDocRef, {
+                    credits: userData.credits - 10,
+                    moviesWatched: userData.moviesWatched + 1
+                });
+                
+                showModal('Film Başlatıldı', 'Film izlemeye başladın! 10 kredi harcandı.');
+            } catch (error) {
+                console.error('Film izleme hatası:', error);
+                showModal('Hata', 'Film izlenirken bir hata oluştu.');
+            }
+        }
+
+        // Watch ad
+        async function watchAd() {
+            if (!userData || userData.adsRemaining === 0) {
+                showModal('Limit Doldu', 'Günlük reklam izleme limitin doldu. Yarın tekrar dene.');
+                return;
+            }
+
+            try {
+                const userDocRef = window.firebaseDoc(window.firebaseDb, 'users', currentUser.uid);
+                await window.firebaseUpdateDoc(userDocRef, {
+                    credits: userData.credits + 20,
+                    adsWatched: userData.adsWatched + 1,
+                    adsRemaining: userData.adsRemaining - 1,
+                    lastAdWatch: new Date().toISOString()
+                });
+                
+                showModal('Reklam Tamamlandı', 'Tebrikler! 20 kredi kazandın.');
+            } catch (error) {
+                console.error('Reklam izleme hatası:', error);
+                showModal('Hata', 'Reklam izlenirken bir hata oluştu.');
+            }
+        }
+
+        // Modal functions
+        function showModal(title, message) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalMessage').textContent = message;
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        // Header scroll effect
+        function setupHeaderScroll() {
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 100) {
+                    document.getElementById('header').classList.add('scrolled');
+                } else {
+                    document.getElementById('header').classList.remove('scrolled');
+                }
+            });
+        }
+
+        // Daily reset for ads
+        function checkDailyReset() {
+            if (userData && userData.lastAdWatch) {
+                const lastWatch = new Date(userData.lastAdWatch);
+                const today = new Date();
+                
+                if (lastWatch.getDate() !== today.getDate() || 
+                    lastWatch.getMonth() !== today.getMonth() || 
+                    lastWatch.getFullYear() !== today.getFullYear()) {
+                    
+                    // Günlük reset
+                    const userDocRef = window.firebaseDoc(window.firebaseDb, 'users', currentUser.uid);
+                    window.firebaseUpdateDoc(userDocRef, {
+                        adsRemaining: 2
+                    });
+                }
+            }
+        }
+
+        // Her saat başı kontrol et
+        setInterval(checkDailyReset, 60 * 60 * 1000);
+    </script>
+</body>
+</html>
